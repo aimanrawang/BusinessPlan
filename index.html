@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="theme-color" content="#0B7A75">
+<title>Pelan Kekayaan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: satu lajur bacaan. Pengepala dan jalur statistik sentiasa nampak; lima tab (Gambaran, Cari laluan, Pelan 90 hari, Modal dan log, Risiko) memecahkan isi kepada bahagian kecil yang interaktif. */
+:root {
+  --bg: #F2F5F6;
+  --surface: #FFFFFF;
+  --fg: #13222B;
+  --muted: #566972;
+  --line: #D6DFE3;
+  --accent: #0B7A75;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DCEFED;
+  --money: #8A5200;
+  --money-soft: #FAEBCF;
+  --danger: #B3261E;
+  --display: 'Unbounded', 'Arial Black', system-ui, sans-serif;
+  --body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1519; --surface: #142126; --fg: #E5EDF0; --muted: #94A7AF; --line: #25363D;
+    --accent: #4FD1C5; --accent-ink: #06201E; --accent-soft: #123532;
+    --money: #F2B661; --money-soft: #33270F; --danger: #FF8A80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1519; --surface: #142126; --fg: #E5EDF0; --muted: #94A7AF; --line: #25363D;
+  --accent: #4FD1C5; --accent-ink: #06201E; --accent-soft: #123532;
+  --money: #F2B661; --money-soft: #33270F; --danger: #FF8A80;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.6;
+  padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.2; margin: 0; font-weight: 500; }
+h1 { font-size: clamp(1.7rem, 5.4vw, 2.5rem); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.1rem, 3.2vw, 1.35rem); }
+h3 { font-size: 0.92rem; }
+p { margin: 0; max-width: 65ch; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eyebrow { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 0.875rem; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+
+header { display: flex; flex-direction: column; gap: 12px; }
+header p.lead { font-size: 1.02rem; }
+.hero { margin: 4px 0 0; }
+.hero img { display: block; width: 100%; height: auto; max-height: 300px; object-fit: cover; object-position: center 45%; border-radius: 10px; border: 1px solid var(--line); }
+.savestate { font-family: var(--mono); font-size: 0.74rem; color: var(--muted); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.stat .num { font-family: var(--display); font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat .num small { font-family: var(--mono); font-size: 0.78rem; font-weight: 400; color: var(--muted); }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.stat.money .bar > i { background: var(--money); }
+.stat.money .num { color: var(--money); }
+
+/* tabs */
+.tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 2px solid var(--line); scrollbar-width: thin; }
+.tabs button { flex: 0 0 auto; background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -2px; border-radius: 0; padding: 10px 14px; font: inherit; font-weight: 500; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.tabs button:hover { color: var(--fg); }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 600; }
+.panel { display: flex; flex-direction: column; gap: 22px; }
+.panel > .intro { display: flex; flex-direction: column; gap: 6px; }
+
+/* generic bits */
+.tag { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); white-space: nowrap; }
+.tag.soft { background: var(--accent-soft); color: var(--accent); }
+button.btn { font: inherit; cursor: pointer; border-radius: 8px; padding: 9px 14px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+button.btn.alt { background: transparent; color: var(--accent); }
+button.ghost { font: inherit; cursor: pointer; background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; font-size: 0.8rem; padding: 4px 10px; }
+button.ghost:hover { color: var(--danger); border-color: var(--danger); }
+input[type="date"], input[type="number"], input[type="text"], select {
+  font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; max-width: 100%;
+}
+.row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.rule { background: var(--money-soft); border-radius: 8px; padding: 12px 14px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; white-space: nowrap; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+details { border-top: 1px solid var(--line); padding: 12px 0; }
+details summary { cursor: pointer; font-weight: 600; }
+details > :not(summary) { margin-top: 8px; }
+
+/* gambaran */
+.levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 10px; }
+.level { text-align: left; font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.level .big { font-family: var(--display); font-size: 1.3rem; font-weight: 700; }
+.level[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.leveltext { border-left: 3px solid var(--accent); padding-left: 14px; display: grid; gap: 4px; }
+.calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.calc label { display: grid; gap: 6px; font-size: 0.85rem; color: var(--muted); min-width: 0; }
+.calc label b { color: var(--fg); font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; }
+.calc input[type="range"] { width: 100%; accent-color: var(--accent); }
+.calcout { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; }
+.calcout > div { border-top: 3px solid var(--accent); padding-top: 8px; display: grid; gap: 2px; min-width: 0; }
+.calcout > div:nth-child(2) { border-color: var(--line); }
+.calcout > div:nth-child(3) { border-color: var(--money); }
+.calcout .amt { font-family: var(--display); font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.chartbox { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.chartbox svg { display: block; width: 100%; height: auto; }
+.ch-grid { stroke: var(--line); stroke-width: 1; }
+.ch-txt { fill: var(--muted); font: 11px var(--mono); }
+.ch-bal { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+.ch-area { fill: var(--accent-soft); stroke: none; }
+.ch-con { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.ch-dot { fill: var(--accent); }
+.ch-end { fill: var(--fg); font: 600 12px var(--mono); }
+.ch-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8rem; color: var(--muted); padding: 4px 6px 0; }
+.ch-legend i { display: inline-block; width: 18px; height: 0; border-top: 3px solid var(--accent); vertical-align: middle; margin-right: 6px; }
+.ch-legend i.d { border-top: 2px dashed var(--muted); }
+.road { list-style: none; margin: 0; padding: 0; }
+.road li { display: grid; grid-template-columns: 22px 1fr; gap: 14px; padding-bottom: 18px; position: relative; }
+.road li::before { content: ""; position: absolute; left: 7px; top: 20px; bottom: 0; width: 2px; background: var(--line); }
+.road li:last-child { padding-bottom: 0; }
+.road li:last-child::before { display: none; }
+.road .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--accent); background: var(--bg); margin-top: 4px; }
+.road .when { font-family: var(--mono); font-size: 0.78rem; color: var(--accent); }
+
+/* laluan */
+.quiz { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 18px; }
+.q { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.q legend { font-weight: 600; padding: 0; margin-bottom: 2px; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts label { cursor: pointer; }
+.opts input { position: absolute; opacity: 0; pointer-events: none; }
+.opts span { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 0.9rem; background: var(--bg); }
+.opts input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.opts input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.matches { display: grid; gap: 10px; }
+.match { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.match .rk { font-family: var(--display); font-size: 1.3rem; color: var(--accent); }
+.match .fit { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 6px; max-width: 220px; }
+.match .fit i { display: block; height: 100%; background: var(--accent); }
+@media (max-width: 520px) { .match { grid-template-columns: auto 1fr; } .match button { grid-column: 1 / -1; justify-self: start; } }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 5px 14px; font-size: 0.88rem; }
+.chips button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+.card.picked { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.card .top { display: flex; gap: 8px; justify-content: space-between; align-items: start; }
+.meta { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 0.85rem; margin: 0; }
+.meta dt { color: var(--muted); }
+.meta dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.card details { border-top: 1px solid var(--line); padding: 10px 0 0; }
+.card .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* pelan */
+.pathbar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.pathinfo { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; }
+.block { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; }
+.block .bh { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.block .range { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+.block.current .range { color: var(--accent); }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.checks label { display: grid; grid-template-columns: 22px 1fr; gap: 12px; padding: 8px 10px; border-radius: 8px; cursor: pointer; align-items: start; }
+.checks label:hover { background: var(--accent-soft); }
+.checks input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--accent); }
+.checks input:checked + span { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+
+/* modal & log */
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; }
+.split > div { border-top: 3px solid var(--accent); padding-top: 10px; display: grid; gap: 2px; min-width: 0; }
+.split > div:nth-child(3) { border-color: var(--money); }
+.split .amt { font-family: var(--display); font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.logform { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 10px; align-items: end; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.logform label { display: grid; gap: 4px; font-size: 0.8rem; color: var(--muted); min-width: 0; }
+.logform input { width: 100%; }
+.entry { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 14px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; }
+.entry .what { min-width: 0; overflow-wrap: anywhere; }
+.entry .date { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); display: block; }
+.entry .net { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 500; }
+.empty { border: 1px dashed var(--line); border-radius: 10px; padding: 18px; color: var(--muted); }
+@media (max-width: 520px) { .entry { grid-template-columns: 1fr auto; } .entry .del { grid-column: 1 / -1; justify-self: end; } }
+footer { color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); padding-top: 16px; }
+@media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="eyebrow">Pelan peribadi Mir</span>
+    <h1>Pelan Kekayaan</h1>
+    <p class="lead">Pilih satu laluan, jalankan 90 hari pertama, dapatkan RM100 pertama. Tandakan kemajuan dan semuanya tersimpan.</p>
+    <div class="savestate" id="savestate" role="status"></div>
+    <figure class="hero"><img src="images/hero.jpg" width="1408" height="768" alt="Syiling kripto emas dan perak di atas meja kayu, bersama buku nota, pen dan wang kertas"></figure>
+  </header>
+
+  <div class="stats" aria-label="Ringkasan kemajuan">
+    <div class="stat">
+      <span class="eyebrow">Pelan 90 hari</span>
+      <span class="num" id="statDay">Hari 1 <small>/ 90</small></span>
+      <div class="bar"><i id="barDay"></i></div>
+      <span class="small muted" id="statDayNote"></span>
+    </div>
+    <div class="stat">
+      <span class="eyebrow" id="statTasksLabel">Langkah siap</span>
+      <span class="num" id="statTasks">0 <small>/ 9</small></span>
+      <div class="bar"><i id="barTasks"></i></div>
+      <span class="small muted" id="statTasksNote"></span>
+    </div>
+    <div class="stat money">
+      <span class="eyebrow">Untung bersih</span>
+      <span class="num" id="statNet">RM0 <small>/ RM100</small></span>
+      <div class="bar"><i id="barNet"></i></div>
+      <span class="small muted" id="statNetNote">Sasaran pertama: RM100 daripada kemahiran sendiri</span>
+    </div>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Bahagian">
+    <button role="tab" id="tab-gambaran" aria-controls="p-gambaran" aria-selected="true" data-tab="gambaran">Gambaran</button>
+    <button role="tab" id="tab-laluan" aria-controls="p-laluan" aria-selected="false" data-tab="laluan" tabindex="-1">Cari laluan</button>
+    <button role="tab" id="tab-pelan" aria-controls="p-pelan" aria-selected="false" data-tab="pelan" tabindex="-1">Pelan 90 hari</button>
+    <button role="tab" id="tab-modal" aria-controls="p-modal" aria-selected="false" data-tab="modal" tabindex="-1">Modal dan log</button>
+    <button role="tab" id="tab-risiko" aria-controls="p-risiko" aria-selected="false" data-tab="risiko" tabindex="-1">Risiko</button>
+  </nav>
+
+  <!-- GAMBARAN -->
+  <div class="panel" id="p-gambaran" role="tabpanel" aria-labelledby="tab-gambaran">
+    <div class="intro">
+      <h2>Berapa besar sasaran kau?</h2>
+      <p class="muted">Boleh pasang cita-cita setinggi langit, tapi strategi mesti betul. Bukan sekadar kerja kuat, simpan duit atau beli saham. Tekan satu tahap untuk lihat apa yang diperlukan.</p>
+    </div>
+    <div class="levels" id="levels"></div>
+    <div class="leveltext" id="leveltext" aria-live="polite"></div>
+
+    <div class="intro" style="margin-top:8px">
+      <h2>Berapa lama kalau menyimpan sahaja?</h2>
+      <p class="muted">Ilustrasi mudah untuk faham kesan masa. Kadar pulangan ialah andaian kau sendiri, bukan ramalan dan bukan jaminan.</p>
+    </div>
+    <div class="calc">
+      <label for="cM">Simpanan sebulan <b id="cMv"></b><input type="range" id="cM" min="0" max="2000" step="50"></label>
+      <label for="cR">Andaian pulangan setahun <b id="cRv"></b><input type="range" id="cR" min="0" max="12" step="0.5"></label>
+      <label for="cY">Tempoh <b id="cYv"></b><input type="range" id="cY" min="1" max="40" step="1"></label>
+    </div>
+    <div class="calcout" aria-live="polite">
+      <div><span class="eyebrow">Nilai akhir</span><span class="amt" id="oFinal"></span><span class="small muted" id="oFinalNote"></span></div>
+      <div><span class="eyebrow">Jumlah disimpan</span><span class="amt" id="oSaved"></span><span class="small muted">Wang kau sendiri</span></div>
+      <div><span class="eyebrow">Masa ke sasaran</span><span class="amt" id="oYears"></span><span class="small muted" id="oYearsNote"></span></div>
+    </div>
+    <div class="chartbox">
+      <div id="chart"></div>
+      <div class="ch-legend"><span><i></i>Nilai akhir</span><span><i class="d"></i>Jumlah disimpan</span></div>
+    </div>
+
+    <div class="intro" style="margin-top:8px">
+      <h2>Lima jalan membina kekayaan besar</h2>
+    </div>
+    <div>
+      <details><summary>1. Bina bisnes sendiri</summary><p>E-dagang, jenama produk, servis perniagaan atau syarikat teknologi. Mula kecil dan besarkan jualan apabila model bisnes terbukti untung.</p></details>
+      <details><summary>2. Kuasai kemahiran bernilai tinggi</summary><p>Pengaturcaraan AI, pembangunan perisian, jualan, pemasaran digital dan keselamatan siber. Kemahiran ini bantu kau dapat pendapatan dan membina bisnes.</p></details>
+      <details><summary>3. Melabur untuk jangka panjang</summary><p>Fahami saham, dana indeks dan instrumen yang sesuai. Pelaburan boleh kembangkan kekayaan dari semasa ke semasa, tetapi pulangan tidak dijamin.</p></details>
+      <details><summary>4. Bina aset</summary><p>Contohnya hartanah yang menjana sewa, pegangan syarikat dan harta intelek. Kira kos, hutang, risiko dan aliran tunai sebelum beli.</p></details>
+      <details><summary>5. Miliki sebahagian syarikat yang berkembang</summary><p>Antara laluan yang boleh hasilkan kekayaan luar biasa: bina syarikat yang selesaikan masalah berjuta pelanggan, kemudian kekalkan sebahagian pemilikan ketika ia berkembang.</p></details>
+    </div>
+
+    <div class="intro" style="margin-top:8px">
+      <h2>Kalau bermula dari kosong</h2>
+    </div>
+    <ol class="road">
+      <li><span class="dot"></span><div><span class="when">Bulan 1–3</span><p>Pilih satu kemahiran yang boleh hasilkan pendapatan. Belajar setiap hari, bina projek atau portfolio.</p></div></li>
+      <li><span class="dot"></span><div><span class="when">Bulan 3–6</span><p>Cuba dapatkan pelanggan atau kerja guna kemahiran itu. Fokus pada pendapatan pertama yang sah.</p></div></li>
+      <li><span class="dot"></span><div><span class="when">Bulan 6–12</span><p>Naikkan pendapatan, simpan sebahagian, dan fahami keperluan sebenar pelanggan.</p></div></li>
+      <li><span class="dot"></span><div><span class="when">Tahun 2–5</span><p>Jika ada permintaan, bina sistem dan kembangkan bisnes. Mula melabur ikut kemampuan dan tahap risiko.</p></div></li>
+      <li><span class="dot"></span><div><span class="when">Jangka panjang</span><p>Bina aset produktif, elak hilang modal akibat keputusan terburu-buru, dan besarkan skala perniagaan.</p></div></li>
+    </ol>
+    <div class="rule small"><b>Jangan percaya</b> skim cepat kaya, pulangan tetap yang kononnya tinggi, atau sesiapa yang janji kau akan jadi bilionair. Sasaran pertama ialah sumber pendapatan yang kukuh.</div>
+  </div>
+
+  <!-- CARI LALUAN -->
+  <div class="panel" id="p-laluan" role="tabpanel" aria-labelledby="tab-laluan" hidden>
+    <div class="intro">
+      <h2>Cari laluan yang sesuai</h2>
+      <p class="muted">Jawab empat soalan. Padanan dikira daripada jawapan kau dan boleh diubah bila-bila masa.</p>
+    </div>
+    <div class="quiz" id="quiz">
+      <fieldset class="q"><legend>Peranti kau sekarang</legend><div class="opts">
+        <label><input type="radio" name="dev" value="phone"><span>Telefon sahaja</span></label>
+        <label><input type="radio" name="dev" value="laptop"><span>Ada laptop atau PC</span></label></div></fieldset>
+      <fieldset class="q"><legend>Modal yang boleh guna</legend><div class="opts">
+        <label><input type="radio" name="cap" value="0"><span>RM0–RM100</span></label>
+        <label><input type="radio" name="cap" value="1"><span>RM100–RM1,000</span></label>
+        <label><input type="radio" name="cap" value="2"><span>RM1,000 ke atas</span></label></div></fieldset>
+      <fieldset class="q"><legend>Apa paling menarik minat kau</legend><div class="opts">
+        <label><input type="radio" name="interest" value="tek"><span>Teknologi dan AI</span></label>
+        <label><input type="radio" name="interest" value="bisnes"><span>Bina bisnes</span></label>
+        <label><input type="radio" name="interest" value="invest"><span>Pelaburan dan aset</span></label>
+        <label><input type="radio" name="interest" value="any"><span>Mana-mana, asal potensi besar</span></label></div></fieldset>
+      <fieldset class="q"><legend>Bila kau nak nampak duit pertama</legend><div class="opts">
+        <label><input type="radio" name="speed" value="fast"><span>Secepat mungkin</span></label>
+        <label><input type="radio" name="speed" value="patient"><span>Boleh sabar untuk hasil lebih besar</span></label></div></fieldset>
+    </div>
+    <div class="matches" id="matches" aria-live="polite"></div>
+
+    <div class="intro" style="margin-top:8px">
+      <h2>Semua laluan</h2>
+      <p class="muted">Tapis dan bandingkan. Pilih satu sebagai laluan utama dan pelan 90 harinya terus sedia.</p>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Tapis laluan"></div>
+    <div class="grid" id="paths"></div>
+  </div>
+
+  <!-- PELAN 90 HARI -->
+  <div class="panel" id="p-pelan" role="tabpanel" aria-labelledby="tab-pelan" hidden>
+    <div class="intro">
+      <h2>Pelan 90 hari</h2>
+      <p class="muted">Matlamatnya projek atau hasil yang boleh ditunjukkan kepada orang lain, bukan kumpul sijil.</p>
+    </div>
+    <div class="pathbar">
+      <label for="pathSel" class="small muted">Laluan</label>
+      <select id="pathSel"></select>
+      <label for="startDate" class="small muted">Tarikh mula</label>
+      <input type="date" id="startDate">
+      <span class="small muted" id="startNote"></span>
+    </div>
+    <div class="pathinfo" id="pathinfo"></div>
+    <div id="blocks"></div>
+  </div>
+
+  <!-- MODAL DAN LOG -->
+  <div class="panel" id="p-modal" role="tabpanel" aria-labelledby="tab-modal" hidden>
+    <div class="intro">
+      <h2>Urus modal</h2>
+      <p class="muted">Kalau itu semua duit yang kau ada, jangan habiskan untuk bisnes. Keperluan harian dan duit kecemasan dahulu.</p>
+    </div>
+    <div class="row">
+      <label for="capital" class="small muted">Lebihan yang betul-betul boleh guna (RM)</label>
+      <input type="number" id="capital" min="0" step="10" inputmode="numeric" style="width:120px">
+    </div>
+    <div class="split">
+      <div><span class="eyebrow">Simpanan kecemasan · 60%</span><span class="amt" id="sv1"></span><span class="small muted">Untuk keperluan tak dijangka</span></div>
+      <div><span class="eyebrow">Belajar dan projek · 20%</span><span class="amt" id="sv2"></span><span class="small muted">Internet, pengangkutan, keperluan projek</span></div>
+      <div><span class="eyebrow">Percubaan bisnes · 20%</span><span class="amt" id="sv3"></span><span class="small muted">Uji servis atau alat berbayar jika perlu</span></div>
+    </div>
+    <div class="rule small"><b>Peraturan penting.</b> Jangan bayar langganan mahal, beli komputer baharu atau buat pinjaman semata-mata untuk bermula. Guna peranti sedia ada. Kalau duit ini perlu untuk makan, pengangkutan atau pengajian, simpan untuk itu.</div>
+
+    <div class="intro" style="margin-top:8px">
+      <h2>Log pendapatan</h2>
+      <p class="muted">Catat setiap bayaran. Untung bersih ialah bayaran tolak kos alat dan perbelanjaan projek.</p>
+    </div>
+    <form class="logform" id="logform" autocomplete="off">
+      <label for="lgDate">Tarikh<input type="date" id="lgDate" required></label>
+      <label for="lgWhat">Servis atau pelanggan<input type="text" id="lgWhat" maxlength="80" placeholder="cth. FAQ kedai" required></label>
+      <label for="lgAmt">Bayaran (RM)<input type="number" id="lgAmt" min="0" step="1" inputmode="decimal" required></label>
+      <label for="lgCost">Kos (RM)<input type="number" id="lgCost" min="0" step="1" inputmode="decimal" value="0"></label>
+      <button type="submit" class="btn">Tambah</button>
+    </form>
+    <div id="entries"></div>
+
+    <h3>Harga percubaan untuk diuji</h3>
+    <p class="small muted">Contoh permulaan untuk servis digital, bukan kadar pasaran yang dijamin. Kira masa, kos alat, perubahan skop dan sokongan selepas projek. Jangan janjikan penjimatan yang belum dibuktikan.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Servis</th><th class="n">Harga</th></tr></thead>
+      <tbody>
+        <tr><td>Susun FAQ dan draf jawapan AI</td><td class="n">RM100–RM250</td></tr>
+        <tr><td>Automasi satu proses ringkas</td><td class="n">RM200–RM500</td></tr>
+        <tr><td>Penyelenggaraan atau penambahbaikan bulanan</td><td class="n">RM100–RM300</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Selepas pendapatan pertama</h3>
+    <p class="small muted">Tolak kos dahulu. Guna untung bersih untuk kukuhkan kewangan dan elak hutang mahal, tambah baik servis yang pelanggan mahu, dan bina aset terpelbagai apabila kewangan stabil.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Peringkat</th><th>Maksud</th></tr></thead>
+      <tbody>
+        <tr><td>Freelancer</td><td>Bina satu penyelesaian untuk seorang pelanggan.</td></tr>
+        <tr><td>Agensi kecil</td><td>Penyelesaian serupa untuk 10–20 pelanggan dengan proses tersusun.</td></tr>
+        <tr><td>Produk</td><td>Satu produk untuk ramai pelanggan tanpa bina semula setiap kali.</td></tr>
+        <tr><td>Syarikat besar</td><td>Kembangkan pasukan dan pasaran jika permintaan dan ekonomi bisnes menyokong.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="rule small"><b>Nilai syarikat bukan tunai peribadi.</b> Pegang 20% syarikat bernilai RM10 juta ialah RM2 juta atas kertas, sebelum hutang, sekatan saham dan kos lain.</div>
+  </div>
+
+  <!-- RISIKO -->
+  <div class="panel" id="p-risiko" role="tabpanel" aria-labelledby="tab-risiko" hidden>
+    <div class="intro"><h2>Risiko yang wajib faham</h2></div>
+    <div>
+      <details><summary>Kemahiran satu alat sahaja tak cukup</summary><p class="muted">Alat AI dan teknologi berubah laju. Belajar selesaikan masalah, uji hasil dan faham asas teknikal.</p></details>
+      <details><summary>Tiada pelanggan</summary><p class="muted">Jangan bina produk berbulan-bulan tanpa bercakap dengan bakal pengguna.</p></details>
+      <details><summary>Privasi dan keselamatan</summary><p class="muted">Jangan masukkan data sulit pelanggan ke alat AI tanpa kebenaran dan perlindungan yang sesuai. Uji keselamatan hanya pada sistem yang kau dibenarkan.</p></details>
+      <details><summary>Penipuan dan spekulasi</summary><p class="muted">Elak skim pulangan terjamin, pinjaman untuk trading, judi, trading berleveraj, kursus mahal dan pelaburan yang kau tak faham.</p></details>
+      <details><summary>Stok dan hutang</summary><p class="muted">Jangan beli stok banyak sebelum permintaan terbukti dan jangan guna hutang untuk bermula.</p></details>
+      <details><summary>Pelajaran terabai</summary><p class="muted">Tetapkan masa bisnes supaya tak ganggu pengajian atau kesihatan.</p></details>
+      <details><summary>Bisnes tak semestinya berjaya</summary><p class="muted">Hadkan modal yang dipertaruhkan dan jangan tanggung kos tetap besar sebelum permintaan terbukti. Jutawan tak mudah dan tak dijamin, bilionair lebih sukar lagi, trilionair amat luar biasa.</p></details>
+    </div>
+  </div>
+
+  <footer>Fokus satu matlamat dahulu: RM100 pertama daripada kemahiran yang kau bina sendiri. Selepas itu, ulang hasilnya, naikkan nilainya dan bina sesuatu yang berkembang tanpa bergantung sepenuhnya pada masa kau.</footer>
+</main>
+
+<script>
+(function () {
+  var LS = 'pelan-kekayaan-v2';
+  var CAPL = ['RM0–RM100', 'RM100–RM1,000', 'RM1,000+'];
+  var SPL = ['1–3 bulan', '3–9 bulan', '1 tahun+'];
+  var PH = [{ f: 1, t: 30, n: 'Hari 1–30' }, { f: 31, t: 60, n: 'Hari 31–60' }, { f: 61, t: 90, n: 'Hari 61–90' }];
+
+  var PATHS = [
+    { id: 'ai', name: 'AI automation dan servis AI', tags: ['tek', 'bisnes'], cap: 0, speed: 1, dev: 'phone', risk: 'Sederhana', high: true,
+      short: 'Guna alat AI sedia ada untuk bantu bisnes kecil jawab soalan pelanggan, susun maklumat dan draf kandungan.',
+      money: 'Projek percubaan berbayar RM100–RM500 untuk kedai kecil atau pencipta kandungan.',
+      why: 'Boleh mula tanpa modal dan pelanggan nampak nilainya cepat. Sumber percuma: Rakyat Digital, Google AI Essentials (semak harga), program MDEC.',
+      watch: 'Alat berubah laju. Jual hasil yang kau dah uji, bukan janji. Jangan masukkan data sulit pelanggan tanpa kebenaran.',
+      plan: [
+        ['Ikuti satu kursus percuma, contohnya Rakyat Digital', 'Bina FAQ automatik untuk kedai rekaan guna maklumat contoh', 'Simpan hasil dalam portfolio ringkas'],
+        ['Bina alat yang susun pertanyaan pelanggan', 'Bina alat yang jana draf penerangan produk', 'Minta maklum balas sekurang-kurangnya 5 bakal pengguna'],
+        ['Hubungi 5–10 bakal pelanggan setiap minggu', 'Tawarkan projek percubaan berbayar dengan skop jelas', 'Catat bayaran pertama dalam log']] },
+    { id: 'app', name: 'Coding dan bina produk', tags: ['tek'], cap: 0, speed: 2, dev: 'laptop', risk: 'Sederhana', high: true,
+      short: 'Belajar Python atau JavaScript, API dan pangkalan data, kemudian bina aplikasi yang boleh dijual berulang kali.',
+      money: 'Kerja bebas web ringkas atau skrip automasi, atau gaji internship dan junior developer.',
+      why: 'Perisian boleh dijual kepada ramai tanpa bina semula. Portfolio kod menunjukkan kemahiran lebih kuat daripada sijil.',
+      watch: 'Lebih lama sebelum ada duit. Jangan bina produk berbulan-bulan tanpa bercakap dengan pengguna.',
+      plan: [
+        ['Belajar asas pengaturcaraan setiap hari', 'Bina 3 skrip kecil yang selesaikan masalah sendiri', 'Simpan kod di GitHub'],
+        ['Bina satu aplikasi web penuh dengan pangkalan data', 'Deploy supaya orang boleh guna', 'Dapatkan 5 pengguna mencuba dan beri maklum balas'],
+        ['Cari satu masalah berulang di bisnes kecil dan tawar alat ringkas', 'Mohon internship atau kerja bebas guna portfolio', 'Tetapkan harga percubaan dan catat dalam log']] },
+    { id: 'cyber', name: 'Keselamatan siber', tags: ['tek'], cap: 0, speed: 2, dev: 'laptop', risk: 'Rendah', high: false,
+      short: 'Bina kemahiran pertahanan sistem dan analisis ancaman, bermula daripada internship atau kerja junior.',
+      money: 'Internship atau kerja junior seperti SOC analyst. Kerja bebas keselamatan hanya dengan kebenaran bertulis pemilik sistem.',
+      why: 'Permintaan kemahiran ini tinggi dan boleh bergabung dengan AI. Laluan ini sama dengan Cyber Journey yang kau dah ada.',
+      watch: 'Uji hanya sistem yang kau dibenarkan dan guna makmal latihan yang sah. Kerja tanpa kebenaran melanggar undang-undang.',
+      plan: [
+        ['Belajar asas rangkaian, Linux dan keselamatan', 'Siapkan makmal latihan yang sah', 'Tulis nota pembelajaran sebagai portfolio'],
+        ['Bina satu projek portfolio, contohnya pemeriksa keselamatan laman web', 'Sertai komuniti dan acara CTF pelajar', 'Pertimbangkan satu sijil asas jika mampu'],
+        ['Sediakan resume dan profil LinkedIn', 'Mohon sekurang-kurangnya 10 internship atau kerja junior', 'Latih soalan temu duga teknikal']] },
+    { id: 'content', name: 'Kandungan, pemasaran dan kreatif', tags: ['bisnes'], cap: 0, speed: 1, dev: 'phone', risk: 'Rendah', high: false,
+      short: 'Edit video pendek, reka grafik, tulis kapsyen atau urus media sosial untuk bisnes kecil.',
+      money: 'Servis bulanan untuk bisnes kecil. Mula dengan satu pelanggan dan harga percubaan.',
+      why: 'Bisnes kecil perlukan kandungan tetapi tiada masa. Boleh mula dengan telefon dan alat percuma, dan AI mempercepatkan kerja.',
+      watch: 'Pelanggan boleh bayar lambat. Tetapkan skop jelas dan minta deposit sebelum mula.',
+      plan: [
+        ['Pilih satu servis: edit video, reka grafik atau kapsyen', 'Hasilkan 5 contoh kerja untuk bisnes rekaan', 'Susun contoh dalam satu profil portfolio'],
+        ['Tawar satu projek berharga rendah kepada 2 bisnes yang kau kenal', 'Minta maklum balas dan testimoni selepas mereka puas hati', 'Tetapkan senarai harga'],
+        ['Hubungi 10 bisnes kecil setiap minggu', 'Minta deposit sebelum mula kerja', 'Catat bayaran dalam log']] },
+    { id: 'ecom', name: 'Jual produk (e-dagang)', tags: ['bisnes'], cap: 1, speed: 1, dev: 'phone', risk: 'Sederhana', high: false,
+      short: 'Jual produk sebagai reseller atau jenama sendiri melalui media sosial atau pasar dalam talian.',
+      money: 'Untung per unit daripada produk yang laku. Mula dengan pra-tempahan atau stok kecil.',
+      why: 'Cara belajar jualan, pelanggan dan kos yang paling terus. Kalau berjaya, boleh jadi jenama sendiri.',
+      watch: 'Stok tak laku memakan modal. Uji permintaan dahulu, jangan beli stok banyak dan jangan guna pinjaman.',
+      plan: [
+        ['Pilih satu niche dan kenal pasti 3 pembekal', 'Kira kos penuh dan untung per unit', 'Tanya 10 bakal pembeli sama ada mereka nak beli'],
+        ['Jual 10–20 unit melalui pra-tempahan atau stok kecil', 'Rekod semua kos termasuk penghantaran', 'Minta ulasan pelanggan'],
+        ['Ulang produk yang laku sahaja', 'Semak untung selepas semua kos', 'Tambah stok guna untung, bukan hutang']] },
+    { id: 'invest', name: 'Melabur jangka panjang', tags: ['invest'], cap: 1, speed: 3, dev: 'phone', risk: 'Sederhana', high: false,
+      short: 'Simpan dan labur secara konsisten dalam instrumen terpelbagai supaya nilai berkembang dari semasa ke semasa.',
+      money: 'Tiada pendapatan segera. Nilai berkembang perlahan dan pulangan tidak dijamin.',
+      why: 'Melengkapkan laluan lain. Dengan modal kecil, kemahiran masih penggerak utama pendapatan, pelaburan menjaga dan mengembangkan hasilnya.',
+      watch: 'Pulangan tidak dijamin dan nilai boleh turun. Faham yuran dan risiko, dan jangan guna pinjaman untuk melabur.',
+      plan: [
+        ['Bina dana kecemasan dahulu', 'Faham beza saham, dana indeks, unit amanah dan simpanan', 'Baca yuran dan risiko sebelum beli apa-apa'],
+        ['Pilih instrumen terpelbagai yang sesuai dengan tempoh dan kelayakan kau, dan semak sumber rasmi', 'Mulakan dengan jumlah kecil yang kau sanggup tak sentuh bertahun', 'Tetapkan simpanan bulanan automatik'],
+        ['Semak portfolio setiap suku tahun, bukan setiap hari', 'Elak pinjaman untuk melabur', 'Tulis peraturan sendiri bila nak beli dan bila nak jual']] },
+    { id: 'assets', name: 'Aset: hartanah dan harta intelek', tags: ['invest'], cap: 2, speed: 3, dev: 'phone', risk: 'Tinggi', high: true,
+      short: 'Miliki hartanah yang menjana sewa atau harta intelek seperti templat, e-buku dan kod yang dijual berulang.',
+      money: 'Sewa bulanan atau jualan berulang, tetapi perlukan modal dan hutang yang diurus dengan matang.',
+      why: 'Jalan ke kekayaan besar, tetapi belum sesuai sebagai langkah pertama. 90 hari ini ialah persediaan, bukan pembelian.',
+      watch: 'Hutang besar dan kekosongan sewa boleh menghimpit kau. Jawapan "belum masanya" juga jawapan yang sah.',
+      plan: [
+        ['Belajar kira aliran tunai sewa: sewa tolak ansuran, cukai, penyelenggaraan dan kekosongan', 'Faham pinjaman perumahan dan kesan hutang', 'Baca satu buku atau ambil satu kursus asas'],
+        ['Simpan untuk deposit dan dana kecemasan secara berasingan', 'Bandingkan sewa dan harga di kawasan sasaran', 'Cuba hasilkan satu harta intelek kecil yang boleh dijual berulang'],
+        ['Semak kelayakan pinjaman dengan jujur', 'Bincang dengan penasihat berkelayakan sebelum beli', 'Putuskan sama ada teruskan, tunggu atau tukar laluan']] },
+    { id: 'startup', name: 'Bina syarikat dan miliki ekuiti', tags: ['bisnes', 'tek'], cap: 1, speed: 3, dev: 'laptop', risk: 'Tinggi', high: true,
+      short: 'Bina syarikat yang selesaikan masalah ramai orang, dan kekalkan sebahagian pemilikan ketika ia berkembang.',
+      money: 'Pendapatan syarikat dahulu. Nilai ekuiti datang kemudian jika syarikat berkembang.',
+      why: 'Inilah laluan yang boleh hasilkan kekayaan luar biasa. Kebanyakan syarikat tak sampai ke situ, jadi uji dengan modal kecil.',
+      watch: 'Risiko paling tinggi. Nilai syarikat atas kertas bukan tunai, dan rakan kongsi serta pemilikan saham mesti jelas sejak awal.',
+      plan: [
+        ['Senaraikan 10 masalah berulang yang orang sekeliling hadapi', 'Bercakap dengan 10 orang yang ada masalah itu', 'Pilih satu masalah yang orang sanggup bayar'],
+        ['Bina versi paling ringkas (MVP)', 'Dapatkan 10 pengguna awal, sebaik-baiknya yang bayar', 'Ukur sama ada mereka kembali guna'],
+        ['Tentukan model harga', 'Faham asas pendaftaran syarikat di SSM dan pemilikan saham dengan rakan kongsi', 'Putuskan teruskan, ubah haluan atau berhenti berdasarkan bukti']] }
+  ];
+  var PBY = {};
+  PATHS.forEach(function (p) { PBY[p.id] = p; });
+
+  var LEVELS = [
+    { id: 'l1', name: 'Stabil', amt: 'RM10k–RM100k', target: 100000, text: 'Bina kemahiran, pendapatan dan simpanan kecemasan. Elakkan hutang yang membebankan.' },
+    { id: 'l2', name: 'Jutawan', amt: 'RM1 juta+', target: 1000000, text: 'Kembangkan pendapatan, labur secara konsisten, dan bina atau miliki perniagaan.' },
+    { id: 'l3', name: 'Bilionair', amt: 'RM1 bilion+', target: 1e9, text: 'Biasanya memerlukan pemilikan besar dalam syarikat yang bernilai berbilion ringgit, atau aset berskala besar.' },
+    { id: 'l4', name: 'Trilionair', amt: 'RM1 trilion+', target: 1e12, text: 'Jauh lebih sukar. Memerlukan pemilikan aset atau perniagaan pada skala luar biasa, dan tiada formula yang menjaminnya.' }
+  ];
+
+  var state = { checks: {}, start: todayStr(), path: 'ai', capital: 500, income: [], quiz: {}, calc: { m: 200, r: 5, y: 10 }, level: 'l2', filter: 'all' };
+
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function todayStr() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function parseD(s) { var p = String(s).split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function rm(n) { var v = Math.round(n * 100) / 100; return 'RM' + v.toLocaleString('en-MY', { maximumFractionDigits: 2 }); }
+  function big(v) {
+    if (v >= 1e12) return 'RM' + (v / 1e12).toFixed(1) + ' trilion';
+    if (v >= 1e9) return 'RM' + (v / 1e9).toFixed(1) + ' bilion';
+    if (v >= 1e6) return 'RM' + (v / 1e6).toFixed(2) + ' juta';
+    return rm(Math.round(v));
+  }
+  function short(v) { if (v >= 1e6) return (v / 1e6).toFixed(v % 1e6 === 0 ? 0 : 1) + ' juta'; if (v >= 1e3) return Math.round(v / 1e3) + 'k'; return String(Math.round(v)); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  try { var raw = localStorage.getItem(LS); if (raw) merge(JSON.parse(raw)); } catch (e) {}
+
+  function merge(s) {
+    if (!s || typeof s !== 'object') return;
+    if (s.checks && typeof s.checks === 'object') state.checks = s.checks;
+    if (typeof s.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s.start)) state.start = s.start;
+    if (typeof s.path === 'string' && PBY[s.path]) state.path = s.path;
+    if (typeof s.capital === 'number' && s.capital >= 0) state.capital = s.capital;
+    if (Array.isArray(s.income)) state.income = s.income;
+    if (s.quiz && typeof s.quiz === 'object') state.quiz = s.quiz;
+    if (s.calc && typeof s.calc === 'object') {
+      var c = s.calc;
+      if (typeof c.m === 'number') state.calc.m = c.m;
+      if (typeof c.r === 'number') state.calc.r = c.r;
+      if (typeof c.y === 'number') state.calc.y = c.y;
+    }
+    if (typeof s.level === 'string' && LEVELS.some(function (l) { return l.id === s.level; })) state.level = s.level;
+  }
+
+  /* persistence */
+  var ref = null, timer = null, writing = false, dirty = false;
+  function setStatus(k) { $('savestate').textContent = { saving: 'Menyimpan…', saved: 'Tersimpan', local: 'Disimpan pada peranti ini sahaja' }[k] || ''; }
+  function schedule() {
+    setStatus('saving');
+    try { localStorage.setItem(LS, JSON.stringify(state)); } catch (e) {}
+    clearTimeout(timer); timer = setTimeout(flush, 700);
+  }
+  function flush() {
+    if (!ref) { setStatus('local'); return; }
+    if (writing) { dirty = true; return; }
+    writing = true;
+    ref.set(JSON.parse(JSON.stringify(state))).then(function () { setStatus('saved'); }, function () { setStatus('local'); }).then(function () {
+      writing = false; if (dirty) { dirty = false; flush(); }
+    });
+  }
+
+  /* tabs */
+  var TABS = ['gambaran', 'laluan', 'pelan', 'modal', 'risiko'];
+  function showTab(t, focus) {
+    if (TABS.indexOf(t) < 0) return;
+    TABS.forEach(function (k) {
+      var on = k === t;
+      $('p-' + k).hidden = !on;
+      var b = $('tab-' + k);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+      if (on && focus) b.focus();
+    });
+    var nav = document.querySelector('.tabs');
+    if (nav && nav.getBoundingClientRect().top < 0) nav.scrollIntoView();
+  }
+  document.querySelector('.tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab);
+  });
+  document.querySelector('.tabs').addEventListener('keydown', function (e) {
+    var i = TABS.indexOf(document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.tab : '');
+    if (i < 0) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); showTab(TABS[(i + 1) % TABS.length], true); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); showTab(TABS[(i + TABS.length - 1) % TABS.length], true); }
+  });
+
+  /* gambaran */
+  function buildLevels() {
+    var h = $('levels'); h.innerHTML = '';
+    LEVELS.forEach(function (l, i) {
+      var b = el('button', 'level'); b.type = 'button'; b.dataset.id = l.id;
+      b.appendChild(el('span', 'eyebrow', 'Tahap ' + (i + 1) + ' · ' + l.name));
+      b.appendChild(el('span', 'big', l.amt));
+      h.appendChild(b);
+    });
+  }
+  function renderLevels() {
+    document.querySelectorAll('.level').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.id === state.level ? 'true' : 'false'); });
+    var l = LEVELS.filter(function (x) { return x.id === state.level; })[0];
+    var t = $('leveltext'); t.innerHTML = '';
+    t.appendChild(el('b', null, l.name + ' · ' + l.amt));
+    t.appendChild(el('p', null, l.text));
+  }
+  function yearsTo(m, r, target) {
+    if (m <= 0) return null;
+    var i = r / 100 / 12, bal = 0;
+    for (var k = 1; k <= 1200; k++) { bal = bal * (1 + i) + m; if (bal >= target) return k / 12; }
+    return null;
+  }
+  function renderCalc() {
+    var m = +state.calc.m, r = +state.calc.r, y = +state.calc.y;
+    $('cMv').textContent = rm(m); $('cRv').textContent = r.toFixed(1) + '%'; $('cYv').textContent = y + ' tahun';
+    var i = r / 100 / 12, bal = 0, con = 0, pts = [];
+    for (var k = 0; k <= y * 12; k++) {
+      if (k > 0) { bal = bal * (1 + i) + m; con += m; }
+      if (k % 12 === 0) pts.push({ x: k / 12, b: bal, c: con });
+    }
+    $('oFinal').textContent = rm(Math.round(bal));
+    $('oFinalNote').textContent = 'Selepas ' + y + ' tahun pada andaian ' + r.toFixed(1) + '%';
+    $('oSaved').textContent = rm(con);
+    var l = LEVELS.filter(function (x) { return x.id === state.level; })[0];
+    if (l.target >= 1e9) {
+      $('oYears').textContent = 'Bukan melalui simpanan';
+      $('oYearsNote').textContent = 'Tahap ' + l.amt + ' datang daripada memiliki bahagian syarikat atau aset bernilai besar.';
+    } else {
+      var yr = yearsTo(m, r, l.target);
+      $('oYears').textContent = yr == null ? 'Lebih 100 tahun' : (yr < 1 ? 'Kurang setahun' : '≈ ' + Math.round(yr) + ' tahun');
+      $('oYearsNote').textContent = 'Untuk capai ' + l.amt.replace('RM10k–', '') + ' dengan simpanan ini sahaja';
+    }
+    drawChart(pts, y);
+  }
+  function drawChart(pts, y) {
+    var W = 640, H = 270, L = 62, R = 18, T = 18, B = 34;
+    var maxV = Math.max(1, pts[pts.length - 1].b, pts[pts.length - 1].c);
+    var mag = Math.pow(10, Math.floor(Math.log(maxV) / Math.LN10));
+    var steps = [1, 2, 2.5, 5, 10], ymax = maxV;
+    for (var s = 0; s < steps.length; s++) { if (steps[s] * mag >= maxV) { ymax = steps[s] * mag; break; } }
+    function X(v) { return L + (v / y) * (W - L - R); }
+    function Y(v) { return T + (1 - v / ymax) * (H - T - B); }
+    var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Graf nilai simpanan dan jumlah disimpan sepanjang ' + y + ' tahun');
+    function add(tag, attrs, text) { var e = document.createElementNS(ns, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; svg.appendChild(e); return e; }
+    for (var g = 0; g <= 4; g++) {
+      var v = ymax * g / 4, yy = Y(v);
+      add('line', { x1: L, x2: W - R, y1: yy, y2: yy, 'class': 'ch-grid' });
+      add('text', { x: L - 8, y: yy + 4, 'text-anchor': 'end', 'class': 'ch-txt' }, g === 0 ? '0' : short(v));
+    }
+    [0, 0.5, 1].forEach(function (f) {
+      var xv = y * f;
+      add('text', { x: X(xv), y: H - 10, 'text-anchor': f === 0 ? 'start' : (f === 1 ? 'end' : 'middle'), 'class': 'ch-txt' }, (Math.round(xv * 10) / 10) + (f === 1 ? ' thn' : ''));
+    });
+    var area = 'M' + X(0) + ',' + Y(0);
+    pts.forEach(function (p) { area += ' L' + X(p.x).toFixed(1) + ',' + Y(p.b).toFixed(1); });
+    area += ' L' + X(y) + ',' + Y(0) + ' Z';
+    add('path', { d: area, 'class': 'ch-area' });
+    var lineC = '', lineB = '';
+    pts.forEach(function (p, i) { lineC += (i ? ' L' : 'M') + X(p.x).toFixed(1) + ',' + Y(p.c).toFixed(1); lineB += (i ? ' L' : 'M') + X(p.x).toFixed(1) + ',' + Y(p.b).toFixed(1); });
+    add('path', { d: lineC, 'class': 'ch-con' });
+    add('path', { d: lineB, 'class': 'ch-bal' });
+    var last = pts[pts.length - 1];
+    add('circle', { cx: X(last.x), cy: Y(last.b), r: 4.5, 'class': 'ch-dot' });
+    add('text', { x: X(last.x) - 8, y: Math.max(T + 12, Y(last.b) - 10), 'text-anchor': 'end', 'class': 'ch-end' }, 'RM' + short(last.b));
+    var host = $('chart'); host.innerHTML = ''; host.appendChild(svg);
+  }
+
+  /* laluan */
+  function score(p, q) {
+    var s = 0;
+    if (q.dev === 'phone' && p.dev === 'laptop') s -= 3;
+    if (q.cap != null) { var c = +q.cap; s += p.cap > c ? -3 : (p.cap < c ? 1 : 0); }
+    if (q.interest === 'any') s += 1; else if (q.interest && p.tags.indexOf(q.interest) >= 0) s += 3;
+    if (q.speed === 'fast') s += p.speed === 1 ? 2 : (p.speed === 2 ? 0 : -2);
+    else if (q.speed === 'patient') s += p.speed === 3 ? 2 : (p.speed === 2 ? 1 : 0);
+    return s;
+  }
+  function renderMatches() {
+    var q = state.quiz, h = $('matches'); h.innerHTML = '';
+    var answered = ['dev', 'cap', 'interest', 'speed'].filter(function (k) { return q[k] != null && q[k] !== ''; }).length;
+    if (answered < 4) {
+      h.appendChild(el('div', 'empty', answered === 0 ? 'Jawab empat soalan di atas dan tiga laluan paling sesuai akan muncul di sini.' : 'Baki ' + (4 - answered) + ' soalan lagi.'));
+      return;
+    }
+    var ranked = PATHS.map(function (p) { return { p: p, s: score(p, q) }; }).sort(function (a, b) { return b.s - a.s; }).slice(0, 3);
+    ranked.forEach(function (r, i) {
+      var row = el('div', 'match');
+      row.appendChild(el('span', 'rk', String(i + 1)));
+      var mid = el('div');
+      mid.appendChild(el('b', null, r.p.name));
+      mid.appendChild(el('div', 'small muted', r.p.short));
+      var fit = el('div', 'fit'); var bi = el('i'); bi.style.width = Math.max(8, Math.min(100, (r.s + 4) / 10 * 100)) + '%'; fit.appendChild(bi); mid.appendChild(fit);
+      row.appendChild(mid);
+      var b = el('button', 'btn' + (state.path === r.p.id ? ' alt' : ''), state.path === r.p.id ? 'Laluan utama' : 'Pilih laluan ini');
+      b.type = 'button'; b.dataset.pick = r.p.id;
+      row.appendChild(b);
+      h.appendChild(row);
+    });
+  }
+  var FILTERS = [['all', 'Semua'], ['low', 'Modal rendah'], ['phone', 'Boleh guna telefon'], ['fast', 'Hasil cepat'], ['high', 'Potensi tinggi']];
+  function buildChips() {
+    var h = $('chips'); h.innerHTML = '';
+    FILTERS.forEach(function (f) { var b = el('button', null, f[1]); b.type = 'button'; b.dataset.f = f[0]; h.appendChild(b); });
+  }
+  function passes(p) {
+    var f = state.filter;
+    return f === 'all' || (f === 'low' && p.cap === 0) || (f === 'phone' && p.dev === 'phone') || (f === 'fast' && p.speed === 1) || (f === 'high' && p.high);
+  }
+  function renderPaths() {
+    document.querySelectorAll('#chips button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.f === state.filter ? 'true' : 'false'); });
+    var h = $('paths'); h.innerHTML = '';
+    PATHS.filter(passes).forEach(function (p) {
+      var c = el('div', 'card' + (state.path === p.id ? ' picked' : ''));
+      var top = el('div', 'top'); top.appendChild(el('h3', null, p.name));
+      if (state.path === p.id) top.appendChild(el('span', 'tag', 'Dipilih'));
+      c.appendChild(top);
+      c.appendChild(el('p', 'small muted', p.short));
+      var dl = el('dl', 'meta');
+      [['Modal', CAPL[p.cap]], ['Hasil pertama', SPL[p.speed - 1]], ['Risiko', p.risk], ['Peranti', p.dev === 'phone' ? 'Telefon cukup untuk mula' : 'Laptop disyorkan']].forEach(function (r) {
+        dl.appendChild(el('dt', null, r[0])); dl.appendChild(el('dd', null, r[1]));
+      });
+      c.appendChild(dl);
+      var d = el('details'); d.appendChild(el('summary', null, 'Butiran'));
+      var a = el('p', 'small'); a.appendChild(el('b', null, 'Duit pertama: ')); a.appendChild(document.createTextNode(p.money)); d.appendChild(a);
+      var b2 = el('p', 'small'); b2.appendChild(el('b', null, 'Kenapa: ')); b2.appendChild(document.createTextNode(p.why)); d.appendChild(b2);
+      var c3 = el('p', 'small'); c3.appendChild(el('b', null, 'Hati-hati: ')); c3.appendChild(document.createTextNode(p.watch)); d.appendChild(c3);
+      c.appendChild(d);
+      var acts = el('div', 'acts');
+      var pb = el('button', 'btn' + (state.path === p.id ? ' alt' : ''), state.path === p.id ? 'Laluan utama' : 'Jadikan laluan utama');
+      pb.type = 'button'; pb.dataset.pick = p.id; acts.appendChild(pb);
+      if (state.path === p.id) { var ob = el('button', 'btn alt', 'Buka pelan 90 hari'); ob.type = 'button'; ob.dataset.go = 'pelan'; acts.appendChild(ob); }
+      c.appendChild(acts);
+      h.appendChild(c);
+    });
+  }
+
+  /* pelan */
+  function buildPathSel() {
+    var s = $('pathSel'); s.innerHTML = '';
+    PATHS.forEach(function (p) { var o = el('option', null, p.name); o.value = p.id; s.appendChild(o); });
+  }
+  function keyOf(pid, ph, i) { return pid + '.' + ph + '.' + i; }
+  function renderPlan() {
+    var p = PBY[state.path];
+    $('pathSel').value = p.id;
+    var inf = $('pathinfo'); inf.innerHTML = '';
+    inf.appendChild(el('b', null, p.name));
+    inf.appendChild(el('p', 'small muted', p.short));
+    var a = el('p', 'small'); a.appendChild(el('b', null, 'Duit pertama: ')); a.appendChild(document.createTextNode(p.money)); inf.appendChild(a);
+    var w = el('p', 'small'); w.appendChild(el('b', null, 'Hati-hati: ')); w.appendChild(document.createTextNode(p.watch)); inf.appendChild(w);
+    var host = $('blocks'); host.innerHTML = '';
+    p.plan.forEach(function (items, ph) {
+      var d = el('div', 'block'); d.dataset.from = PH[ph].f; d.dataset.to = PH[ph].t;
+      var bh = el('div', 'bh');
+      bh.appendChild(el('span', 'range', PH[ph].n));
+      bh.appendChild(el('h3', null, ['Belajar dan bina asas', 'Bina dan uji', 'Cari hasil pertama'][ph]));
+      var tg = el('span', 'tag', 'Sekarang'); tg.hidden = true; bh.appendChild(tg);
+      d.appendChild(bh);
+      var ul = el('ul', 'checks');
+      items.forEach(function (t, i) {
+        var li = el('li'), lab = el('label'), inp = el('input'), sp = el('span', null, t);
+        inp.type = 'checkbox'; inp.dataset.key = keyOf(p.id, ph, i); inp.checked = !!state.checks[inp.dataset.key];
+        lab.appendChild(inp); lab.appendChild(sp); li.appendChild(lab); ul.appendChild(li);
+      });
+      d.appendChild(ul); host.appendChild(d);
+    });
+  }
+
+  /* computed */
+  function dayInfo() { return Math.floor((parseD(todayStr()) - parseD(state.start)) / 864e5) + 1; }
+  function updateComputed() {
+    var p = PBY[state.path], done = 0, total = 0;
+    p.plan.forEach(function (items, ph) { items.forEach(function (t, i) { total++; if (state.checks[keyOf(p.id, ph, i)]) done++; }); });
+    $('statTasksLabel').textContent = 'Langkah siap';
+    $('statTasks').innerHTML = done + ' <small>/ ' + total + '</small>';
+    $('barTasks').style.width = (done / total * 100) + '%';
+    $('statTasksNote').textContent = p.name;
+
+    var n = dayInfo(), shown = Math.max(0, Math.min(90, n));
+    $('statDay').innerHTML = 'Hari ' + shown + ' <small>/ 90</small>';
+    $('barDay').style.width = (shown / 90 * 100) + '%';
+    $('statDayNote').textContent = n < 1 ? 'Bermula dalam ' + (1 - n) + ' hari' : (n > 90 ? 'Pelan 90 hari dah tamat, teruskan dan semak semula' : 'Baki ' + (90 - n) + ' hari');
+    $('startNote').textContent = n < 1 ? 'Belum bermula' : 'Hari ke-' + n + ' sejak mula';
+    document.querySelectorAll('.block').forEach(function (b) {
+      var cur = n >= +b.dataset.from && n <= +b.dataset.to;
+      b.classList.toggle('current', cur); b.querySelector('.tag').hidden = !cur;
+    });
+
+    var net = 0; state.income.forEach(function (e) { net += (+e.amount || 0) - (+e.cost || 0); });
+    $('statNet').innerHTML = rm(net) + ' <small>/ RM100</small>';
+    $('barNet').style.width = Math.max(0, Math.min(100, net)) + '%';
+    $('statNetNote').textContent = net >= 100 ? 'Sasaran pertama dicapai. Ulang dan naikkan nilainya.' : 'Sasaran pertama: RM100 daripada kemahiran sendiri';
+
+    var c = Math.max(0, +state.capital || 0);
+    $('sv1').textContent = rm(c * 0.6); $('sv2').textContent = rm(c * 0.2); $('sv3').textContent = rm(c * 0.2);
+  }
+  function renderEntries() {
+    var host = $('entries'); host.innerHTML = '';
+    if (!state.income.length) { host.appendChild(el('div', 'empty', 'Belum ada bayaran dicatat. Bila pelanggan pertama bayar, tambah di borang di atas dan bar RM100 akan bergerak.')); return; }
+    state.income.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).forEach(function (en) {
+      var row = el('div', 'entry'), w = el('div', 'what');
+      w.appendChild(el('span', 'date', en.date)); w.appendChild(el('span', null, en.what));
+      var nt = el('div', 'net', rm((+en.amount || 0) - (+en.cost || 0)));
+      nt.title = 'Bayaran ' + rm(+en.amount || 0) + ', kos ' + rm(+en.cost || 0);
+      var del = el('div', 'del'), b = el('button', 'ghost', 'Buang'); b.type = 'button'; b.dataset.id = en.id; b.setAttribute('aria-label', 'Buang catatan ' + en.what);
+      del.appendChild(b); row.appendChild(w); row.appendChild(nt); row.appendChild(del); host.appendChild(row);
+    });
+  }
+  function applyAll() {
+    renderLevels(); renderCalc();
+    document.querySelectorAll('#quiz input').forEach(function (i) { i.checked = state.quiz[i.name] === i.value; });
+    renderMatches(); renderPaths(); renderPlan();
+    $('startDate').value = state.start; $('capital').value = state.capital;
+    $('cM').value = state.calc.m; $('cR').value = state.calc.r; $('cY').value = state.calc.y;
+    renderEntries(); updateComputed();
+  }
+  function setPath(id) {
+    state.path = id; renderMatches(); renderPaths(); renderPlan(); updateComputed(); schedule();
+  }
+
+  /* events */
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    var lv = t.closest && t.closest('.level'); if (lv) { state.level = lv.dataset.id; renderLevels(); renderCalc(); schedule(); return; }
+    var pk = t.closest && t.closest('button[data-pick]'); if (pk) { setPath(pk.dataset.pick); return; }
+    var go = t.closest && t.closest('button[data-go]'); if (go) { showTab(go.dataset.go); return; }
+    var ch = t.closest && t.closest('#chips button'); if (ch) { state.filter = ch.dataset.f; renderPaths(); schedule(); return; }
+  });
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.dataset && t.dataset.key) { state.checks[t.dataset.key] = t.checked; updateComputed(); schedule(); }
+    else if (t.closest && t.closest('#quiz')) { state.quiz[t.name] = t.value; renderMatches(); schedule(); }
+    else if (t.id === 'pathSel') { setPath(t.value); }
+    else if (t.id === 'startDate') { if (t.value) { state.start = t.value; updateComputed(); schedule(); } }
+  });
+  ['cM', 'cR', 'cY'].forEach(function (id) {
+    $(id).addEventListener('input', function (e) {
+      var k = { cM: 'm', cR: 'r', cY: 'y' }[id]; state.calc[k] = parseFloat(e.target.value) || 0; renderCalc(); schedule();
+    });
+  });
+  $('capital').addEventListener('input', function (e) {
+    var v = parseFloat(e.target.value); state.capital = isNaN(v) || v < 0 ? 0 : v; updateComputed(); schedule();
+  });
+  $('logform').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var what = $('lgWhat').value.trim(), amt = parseFloat($('lgAmt').value), cost = parseFloat($('lgCost').value) || 0, date = $('lgDate').value || todayStr();
+    if (!what || isNaN(amt) || amt < 0 || cost < 0) return;
+    state.income.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), date: date, what: what, amount: amt, cost: cost });
+    $('lgWhat').value = ''; $('lgAmt').value = ''; $('lgCost').value = '0';
+    renderEntries(); updateComputed(); schedule();
+  });
+  $('entries').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-id]'); if (!b) return;
+    state.income = state.income.filter(function (x) { return x.id !== b.dataset.id; });
+    renderEntries(); updateComputed(); schedule();
+  });
+
+  buildLevels(); buildChips(); buildPathSel();
+  $('lgDate').value = todayStr();
+  applyAll(); setStatus('local');
+  var h0 = (location.hash || '').replace('#', ''); if (TABS.indexOf(h0) > 0) showTab(h0);
+
+  (async function () {
+    try {
+      if (!window.claude || !window.claude.use) return;
+      var user = await window.claude.use('user'), db = await window.claude.use('db');
+      if (!user || !db) return;
+      var id = await user.id(); if (!id) return;
+      var r = db.collection('data/users/' + id).doc('pelan');
+      var snap = await r.get();
+      if (snap.exists) merge(snap.data());
+      ref = r; applyAll();
+      if (!snap.exists) flush(); else setStatus('saved');
+    } catch (e) { ref = null; setStatus('local'); }
+  })();
+})();
+</script>
+
+</body>
+</html>
